@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Use one shared autoreview installation from `openclaw/agent-skills`; repository entrypoints now receive upstream fixes without copied helpers or test suites.
+
 ### Fixes
 
 - Web: show the existing skill detail skeleton while navigating to a skill whose route data is still loading.
