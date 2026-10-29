@@ -6,6 +6,7 @@ import { gzipSync, strFromU8, unzipSync } from "fflate";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { parseArk } from "../packages/schema/src/ark";
 import { ApiV1SkillListResponseSchema } from "../packages/schema/src/schemas";
+import { prepareClawPackInternal } from "./packageClawpackNode";
 
 // Route behavior assumes verified ingress; trust validation is covered by httpRateLimit.edge.test.ts.
 vi.mock("./lib/verifiedClientIp", () => ({
@@ -18168,7 +18169,19 @@ describe("httpApiV1 handlers", () => {
         .mockImplementationOnce(() => lateStore)
         .mockResolvedValueOnce("storage:early");
       const remove = vi.fn().mockResolvedValue(undefined);
-      const runAction = vi.fn();
+      const storage = {
+        store,
+        delete: remove,
+        get: vi.fn().mockResolvedValue(new Blob([bytesToArrayBuffer(pack)])),
+      };
+      const runAction = vi.fn(
+        async (_ref: unknown, args: unknown) =>
+          await (
+            prepareClawPackInternal as unknown as {
+              _handler: (ctx: ActionCtx, args: unknown) => Promise<unknown>;
+            }
+          )._handler(makeCtx({ storage }), args),
+      );
       const form = packagePublishForm(packagePublishMetadata());
       if (staged) {
         form.set("clawpack", "storage:retained-tarball");
@@ -18178,11 +18191,7 @@ describe("httpApiV1 handlers", () => {
         makeCtx({
           runMutation: vi.fn().mockResolvedValue(okRate()),
           runAction,
-          storage: {
-            store,
-            delete: remove,
-            get: vi.fn().mockResolvedValue(new Blob([bytesToArrayBuffer(pack)])),
-          },
+          storage,
         }),
         new Request("https://example.com/api/v1/packages", { method: "POST", body: form }),
       );
@@ -18195,7 +18204,7 @@ describe("httpApiV1 handlers", () => {
           a.localeCompare(b),
         ),
       );
-      expect(runAction).not.toHaveBeenCalled();
+      expect(runAction).toHaveBeenCalledTimes(staged ? 1 : 0);
     },
   );
 
@@ -18601,6 +18610,43 @@ describe("httpApiV1 handlers", () => {
     expect(runAction).not.toHaveBeenCalled();
   });
 
+  it("prepares staged archives outside the HTTP runtime", async () => {
+    vi.mocked(requirePackagePublishAuth).mockResolvedValue({
+      kind: "user",
+      userId: "users:1",
+      user: { _id: "users:1", handle: "p" },
+    } as never);
+    const payload = { ...packagePublishMetadata({ family: "code-plugin" }), files: [] };
+    const runAction = vi
+      .fn()
+      .mockResolvedValueOnce({ payloadJson: JSON.stringify(payload), requestStorageIds: [] })
+      .mockResolvedValueOnce({ ok: true, packageId: "pkg:1", releaseId: "rel:1" });
+    const storageGet = vi.fn(() => {
+      throw new Error("archive must stay out of HTTP");
+    });
+    const form = packagePublishForm(packagePublishMetadata({ family: "code-plugin" }));
+    form.set("clawpack", "storage:clawpack");
+    form.set("clawpackUploadTicket", "packagePublishUploadTickets:1");
+    const response = await __handlers.publishPackageV1Handler(
+      makeCtx({
+        runAction,
+        runMutation: vi.fn().mockResolvedValue(okRate()),
+        storage: { get: storageGet },
+      }),
+      new Request("https://example.com/api/v1/packages", {
+        method: "POST",
+        headers: { Authorization: "Bearer clh_test" },
+        body: form,
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect(storageGet).not.toHaveBeenCalled();
+    expect(runAction).toHaveBeenNthCalledWith(1, expect.anything(), {
+      artifactStorageId: "storage:clawpack",
+      metadataJson: JSON.stringify(packagePublishMetadata({ family: "code-plugin" })),
+    });
+  });
+
   it("staged ClawPack publish derives artifact metadata from stored bytes", async () => {
     vi.mocked(getOptionalApiTokenUserId).mockResolvedValue("users:1" as never);
     vi.mocked(requirePackagePublishAuth).mockResolvedValue({
@@ -18609,9 +18655,6 @@ describe("httpApiV1 handlers", () => {
       user: { _id: "users:1", handle: "p" },
     } as never);
     const runMutation = vi.fn().mockResolvedValue(okRate());
-    const runAction = vi
-      .fn()
-      .mockResolvedValue({ ok: true, packageId: "pkg:1", releaseId: "rel:1" });
     const pack = npmPackFixture({
       "package/package.json": JSON.stringify({ name: "demo-plugin", version: "1.0.0" }),
       "package/openclaw.plugin.json": JSON.stringify({ id: "demo.plugin" }),
@@ -18623,6 +18666,16 @@ describe("httpApiV1 handlers", () => {
         : null,
     );
     const storageStore = vi.fn(async (_entry: Blob) => `storage:${storageStore.mock.calls.length}`);
+    const runAction = vi.fn(async (_ref: unknown, args: Record<string, unknown>) => {
+      if ("artifactStorageId" in args) {
+        return await (
+          prepareClawPackInternal as unknown as {
+            _handler: (ctx: ActionCtx, args: unknown) => Promise<unknown>;
+          }
+        )._handler(makeCtx({ storage: { get: storageGet, store: storageStore } }), args);
+      }
+      return { ok: true, packageId: "pkg:1", releaseId: "rel:1" };
+    });
     const form = packagePublishForm(
       packagePublishMetadata({
         family: "code-plugin",

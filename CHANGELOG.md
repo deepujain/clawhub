@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Publishing: prepare staged ClawPacks in the Node runtime so large archives can reach package validation without exhausting the HTTP action memory limit.
+
 - CI: speed up the Linux root typecheck with pinned tsrs while retaining native TypeScript for local checks and package builds.
 - skills.sh: sync once a day at 03:00 Pacific and mirror the top 4,000 rows of the all-time and trending views, so the sync completes again after skills.sh expanded its default feed to ~93k rows; Trending keeps the last skills.sh run for up to 50 hours.
 - Workers: include bounded, redacted skill evaluation failure reasons in CI logs so operators can diagnose failed runs.

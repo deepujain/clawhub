@@ -128,6 +128,7 @@ import type * as lib_openClawInspectorTarget from "../lib/openClawInspectorTarge
 import type * as lib_openClawPublishAuthorization from "../lib/openClawPublishAuthorization.js";
 import type * as lib_openaiResponse from "../lib/openaiResponse.js";
 import type * as lib_packageArtifacts from "../lib/packageArtifacts.js";
+import type * as lib_packageClawpackPublish from "../lib/packageClawpackPublish.js";
 import type * as lib_packageIcons from "../lib/packageIcons.js";
 import type * as lib_packagePublishRecovery from "../lib/packagePublishRecovery.js";
 import type * as lib_packageRegistry from "../lib/packageRegistry.js";
@@ -224,6 +225,7 @@ import type * as managedMcpTestFixtures from "../managedMcpTestFixtures.js";
 import type * as managementDevSeed from "../managementDevSeed.js";
 import type * as mcpInspectionNode from "../mcpInspectionNode.js";
 import type * as migrations from "../migrations.js";
+import type * as packageClawpackNode from "../packageClawpackNode.js";
 import type * as packageInspectorHttp from "../packageInspectorHttp.js";
 import type * as packageInspectorNode from "../packageInspectorNode.js";
 import type * as packageLeaderboards from "../packageLeaderboards.js";
@@ -415,6 +417,7 @@ declare const fullApi: ApiFromModules<{
   "lib/openClawPublishAuthorization": typeof lib_openClawPublishAuthorization;
   "lib/openaiResponse": typeof lib_openaiResponse;
   "lib/packageArtifacts": typeof lib_packageArtifacts;
+  "lib/packageClawpackPublish": typeof lib_packageClawpackPublish;
   "lib/packageIcons": typeof lib_packageIcons;
   "lib/packagePublishRecovery": typeof lib_packagePublishRecovery;
   "lib/packageRegistry": typeof lib_packageRegistry;
@@ -511,6 +514,7 @@ declare const fullApi: ApiFromModules<{
   managementDevSeed: typeof managementDevSeed;
   mcpInspectionNode: typeof mcpInspectionNode;
   migrations: typeof migrations;
+  packageClawpackNode: typeof packageClawpackNode;
   packageInspectorHttp: typeof packageInspectorHttp;
   packageInspectorNode: typeof packageInspectorNode;
   packageLeaderboards: typeof packageLeaderboards;
